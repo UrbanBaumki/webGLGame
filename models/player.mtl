@@ -1,0 +1,63 @@
+# Blender MTL File: 'None'
+# Material Count: 5
+
+newmtl 134489ea_dds
+Ns 9.803922
+Ka 0.700000 0.700000 0.700000
+Kd 0.700000 0.700000 0.700000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd C:\Users\Franck\Desktop\3DCap\Portal2\Textures\134489ea.dds
+map_Ka C:\\Users\\Franck\\Desktop\\3DCap\\Portal2\\Textures\\134489ea.dds
+
+newmtl 55539285_dds
+Ns 9.803922
+Ka 0.700000 0.700000 0.700000
+Kd 0.700000 0.700000 0.700000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd C:\Users\Franck\Desktop\3DCap\Portal2\Textures\55539285.dds
+map_Ka C:\\Users\\Franck\\Desktop\\3DCap\\Portal2\\Textures\\55539285.dds
+
+newmtl 803a099c_dds
+Ns 9.803922
+Ka 0.700000 0.700000 0.700000
+Kd 0.700000 0.700000 0.700000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd C:\Users\Franck\Desktop\3DCap\Portal2\Textures\803a099c.dds
+map_Ka C:\\Users\\Franck\\Desktop\\3DCap\\Portal2\\Textures\\803a099c.dds
+
+newmtl 9934f39c_dds
+Ns 9.803922
+Ka 0.700000 0.700000 0.700000
+Kd 0.700000 0.700000 0.700000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd C:\Users\Franck\Desktop\3DCap\Portal2\Textures\9934f39c.dds
+map_Ka C:\\Users\\Franck\\Desktop\\3DCap\\Portal2\\Textures\\9934f39c.dds
+
+newmtl cd0427e7_dds
+Ns 9.803922
+Ka 0.700000 0.700000 0.700000
+Kd 0.700000 0.700000 0.700000
+Ks 0.100000 0.100000 0.100000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd C:\Users\Franck\Desktop\3DCap\Portal2\Textures\cd0427e7.dds
+map_Ka C:\\Users\\Franck\\Desktop\\3DCap\\Portal2\\Textures\\cd0427e7.dds
+map_d C:\\Users\\Franck\\Desktop\\3DCap\\Portal2\\Textures\\cd0427e7.dds

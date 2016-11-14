@@ -1,0 +1,1037 @@
+<html>
+<head>
+ <meta charset="UTF-8"> 
+ <title>WormHole</title>
+ <style type="text/css">
+ 	html, body {
+            width: 100%;
+            height: 100%;
+        }
+	body{
+		margin: 0;
+		overflow: hidden;
+	}
+	#blocker {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,50,0.5);
+     }
+
+     #navodila {
+            width: 100%;
+            height: 100%;
+            display: -webkit-box;
+            display: -moz-box;
+            display: box;
+            -webkit-box-orient: horizontal;
+            -moz-box-orient: horizontal;
+            box-orient: horizontal;
+            -webkit-box-pack: center;
+            -moz-box-pack: center;
+            box-pack: center;
+            -webkit-box-align: center;
+            -moz-box-align: center;
+            box-align: center;
+            color: #ffffff;
+            text-align: center;
+            cursor: pointer;
+        }
+    
+</style>
+</head>
+
+<body>
+<script src="build/three.min.js"></script>
+<script src="build/PointerLockControls.js"></script>
+<script src="build/OBJLoader.js"></script>
+<script src="build/myLoader.js"></script>
+<script src="build/maps.js"></script>
+<div id="blocker" style="display: -webkit-box;">
+        <div id="navodila">
+            <span style="font-size:40px">WORMHOLE - Klikni za začetek!</span>
+            <br>
+            TIPKE: W, A, S, D = Premikanje; SPACE = Skoči; MIŠ = Premikaj pogled;<br>
+            <text style="color: blue">LEVI KLIK: Modri portal</text> <text style="color: orange">   DESNI KLIK: Oranžni portal</text>
+        </div>
+    </div>
+<script type="text/javascript">
+
+	 var audioElement = document.createElement('audio');
+	   audioElement.setAttribute('src', 'jump.wav');
+	     audioElement.volume=0.6;
+	 var blueSound = document.createElement('audio');
+	 blueSound.setAttribute('src', 'blue.wav');
+	 blueSound.volume = 0.8;
+	 var orangeSound = document.createElement('audio');
+	 orangeSound.setAttribute('src', 'orange.wav');
+	 orangeSound.volume = 0.8;
+	 var invalidSurface = document.createElement('audio');
+	 invalidSurface.setAttribute('src', 'invalid.wav');
+	 invalidSurface.volume = 0.8;
+	 var startS = document.createElement('audio');
+	 startS.setAttribute('src', 'start.wav');
+	 startS.volume = 0.8;
+	 var blueTeleport = document.createElement('audio');
+	 blueTeleport.setAttribute('src', 'blueTeleport.mp3');
+	 blueTeleport.volume = 0.8;
+	 var orangeTeleport = document.createElement('audio');
+	 orangeTeleport.setAttribute('src', 'orangeTeleport.mp3');
+	 orangeTeleport.volume = 0.8;
+
+function playBlueTeleport(){
+	blueTeleport.play();
+}
+
+function playOrangeTeleport(){
+	orangeTeleport.play();
+}
+
+function playStart(){
+	startS.play();
+}
+
+function PlaySound() {
+
+  audioElement.play();
+}
+
+var audioElement2 = document.createElement('audio');
+  function PlaySound2(path) {
+  
+  audioElement2.setAttribute('src', path);
+  audioElement2.volume=0.4;
+  audioElement2.loop = true;
+  audioElement2.play();
+}
+function playBlue(){
+	blueSound.play();
+}
+function playOrange(){
+	orangeSound.play();
+}
+function playInvalid(){
+	invalidSurface.play();
+}
+	var bluePortalObj, orangePortalObj, portalGunObj, playerObj = null;
+	loadPortalsObj();
+	loadGunObj();
+	loadPlayer();
+	
+	var play = false;
+	var portals = [null, null];
+	var pLights = [null, null];
+	var pCameras = [null, null];
+	var teleportPoints = [null, null];
+	var teleportNormals = [null, null];
+	var buttonObj = null;
+	var buttonLoaded = false;
+	var buttonPos = new THREE.Vector3();
+	loadButton();
+	var buttonCollision = new THREE.Mesh(new THREE.CubeGeometry(3,2,3), new THREE.MeshBasicMaterial({color: 0xffffff}));
+	var blue = false, orange = false, both = false;
+	var blueSphere = new THREE.Mesh( new THREE.SphereGeometry( 1.4, 32, 32 ), new THREE.MeshBasicMaterial( {color: 0x2294E0} ) );
+		blueSphere.scale.set(0.001, 1.9, 1.05);
+		blueSphere.name = "blue";
+	var orangeSphere = new THREE.Mesh( new THREE.SphereGeometry( 1.4, 32, 32 ), new THREE.MeshBasicMaterial( {color: 0xFFAA4F} ) );
+		orangeSphere.scale.set(0.001, 1.9, 1.05);
+		orangeSphere.name = "orange";
+	var collidingWithPortal = "";
+	var teleport = false;
+	var gunLoaded = false;
+	var playerLoaded = false;
+	var pick = false;
+	var objects = new Array();
+
+	var mapNo = 0;	
+    var mapH = maps[mapNo].length, 
+        mapW = maps[mapNo][0].length;
+    var map = maps[mapNo];
+
+	//spremenljivke premika
+	var l = false;
+	var r = false;
+	var j = false;
+	var f = false;
+	var b = false;
+	var falling = true;
+	var jCap = 1.14;
+	var jSpeed = jCap;
+	var canJump = true;
+	var fallOfEdge = false;
+
+	var wWidth = window.innerWidth;
+	var wHeight = window.innerHeight;
+	//raycasting
+	var raycaster = new THREE.Raycaster();
+	var mouse = new THREE.Vector2();
+	var geometry = new THREE.CubeGeometry( 0.2, 0.2, 0.2 );
+	var camHeight = 2;
+	mouse.x = wWidth/2;
+	mouse.y = -wHeight/2;
+
+	var cubeSpeed = 5; // enot na sekundo
+	var clock = new THREE.Clock();
+	//spremenljivke scena, kamera in renderer
+
+	var scene = new THREE.Scene();
+	scene.fog = new THREE.Fog( 0xffffff, 0, 500 );
+	var camera = new THREE.PerspectiveCamera(80, wWidth/wHeight, 0.1, 600);
+	
+	//ostale spremenljivke
+	var unit = 20,
+		wallheight = unit / 3,
+		movespeed = unit * 1,
+		bulletspeed = movespeed * 5;
+
+	//nastavitve kamere
+		camera.position.y = camHeight;
+		camera.lookAt(scene.position);
+		scene.add(camera);
+		
+	//pointer lock controls
+	var controls = new THREE.PointerLockControls(camera);
+	scene.add(controls.getObject());
+	
+	//KOLIZIJA RAYS
+	var raycasterFloor = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0,-1,0), 0, camHeight);
+	var raycasterForward = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0 , 3.2);
+	var raycasterBackward = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0 , 3);
+	var raycasterCeil = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0,1,0), 0 , 1.6);
+	var raycasterLeft = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0 , 2);
+	var raycasterRight = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0 , 2);
+	var raycasterFloorShort = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0,-1,0), 0 , 1.5);
+	var fPortalCol = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0 , 3.2);
+	
+	//rendered
+	var renderer = new THREE.WebGLRenderer();
+	renderer.setClearColor(0xA8FFAA);
+
+	renderer.shadowMap.enabled = true;
+   	renderer.shadowMapSoft = true;
+   	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+	//render velikost in dodajanje v dokument
+	renderer.setSize(wWidth, wHeight);
+
+	document.body.innerHTML += "<div id='ch' style='position:absolute; border-radius:10px; backgrond:black; top:0; width: 10px; height: 10px; border: solid black 2px;'></div>";
+	document.body.appendChild(renderer.domElement);
+	
+	var ch = document.getElementById("ch");
+	ch.style.margin = (wHeight/2 -5) +"px 0px 0px "+ (wWidth/2 -5)+"px";
+
+	//luči
+	var l1 = new THREE.SpotLight(0xffffff);
+		
+	l1.add( new THREE.Mesh(new THREE.BoxGeometry( 0.2,0.2,0.2 ), new THREE.MeshBasicMaterial({ color: 0xfff545 , wireframe: true})));
+	l1.castShadow = true;
+	l1.shadowCameraEnabled = true;
+	l1.position.set(0 , 60 , 0);
+	l1.target.position = new THREE.Vector3(0,0,0);
+	scene.add(l1);
+	
+	// Lighting
+	var directionalLight1 = new THREE.DirectionalLight( 0xF7EFBE, 0.7 );
+	directionalLight1.position.set( 0.5, 1, 0.5 );
+	directionalLight1.castShadow = true;
+	scene.add( directionalLight1 );
+
+	var directionalLight2 = new THREE.DirectionalLight( 0xF7EFBE, 0.5 );
+	directionalLight2.position.set( -0.5, -1, -0.5 );
+	directionalLight2.castShadow = true;
+	scene.add( directionalLight2 );
+
+
+
+
+	var ambientLight = new THREE.AmbientLight(0x111111);
+	scene.add(ambientLight);
+	
+
+/////////////////////////// TEXTURE CAM
+	var blueCamera = new THREE.PerspectiveCamera(80, wWidth/wHeight, 0.1, 500);
+	blueCamera.position.set(0,100,0);
+	blueCamera.lookAt(scene.position);
+
+	var orangeCamera = new THREE.PerspectiveCamera(80, wWidth/wHeight, 0.1, 500);
+	orangeCamera.position.set(0,100,0);
+	orangeCamera.lookAt(scene.position);
+
+	var sRT;
+	var planeGeometry = new THREE.CubeGeometry( 20, 20, 1, 1 );
+
+	fRT = new THREE.WebGLRenderTarget( 1024, 1024, { format: THREE.RGBFormat } );
+	sRT = new THREE.WebGLRenderTarget( 1024, 1024, { format: THREE.RGBFormat } );
+	//materiali za portale
+	var blueCameraMaterial = new THREE.MeshBasicMaterial( { map: fRT } );
+	var orangeCameraMaterial = new THREE.MeshBasicMaterial( { map: sRT } );
+	
+	scene.add(blueCamera);
+	scene.add(orangeCamera);
+
+
+//
+var yBlueOffset = 0, yOrangeOffset = 0;
+var pointBlue, pointOrange, originBlue, originOrange;
+var start = true;
+
+////projekcija kamere na portal /textura
+function projectPortal(portal, camTexture){
+
+	portal.traverse( function ( child ) {
+						if ( child instanceof THREE.Mesh ) {
+							child.material = camTexture;
+						}
+					} );
+}
+
+	readMap();
+
+	//funkcija ki renderira
+	var render = function(){
+		requestAnimationFrame( render );
+		//cube.rotation.x += 0.1;
+		//cube.rotation.y -= 0.1;
+		//predvidevam na ostale funkcije
+		update();
+		if(playerObj!= null)
+			playerObj.visible = true;
+		renderer.render( scene, blueCamera, fRT, true );
+		renderer.render( scene, orangeCamera, sRT, true );
+		if(playerObj!= null)
+			playerObj.visible = false;
+		if(scene != null)
+			renderer.render(scene, camera);
+	};
+
+
+	render();
+
+	function readMap(){
+		PlaySound2('Nordwise.mp3');
+	var floorCount = 1;
+	var units = 10;
+ 	var wallTexture = new THREE.ImageUtils.loadTexture( 'materials/tile.jpg' );
+ 		wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping; 
+	wallTexture.repeat.set( 2,2 );
+	var concrete = new THREE.ImageUtils.loadTexture( 'materials/floor.jpg' );
+ 		concrete.wrapS = concrete.wrapT = THREE.RepeatWrapping; 
+	concrete.repeat.set( 2,2 );
+	var floorTexture = new THREE.ImageUtils.loadTexture( 'materials/tile.jpg' );
+ 		
+	//geometrija vseh zidov dolžina * višina zida * dolžina -> kvadri
+	var cube = new THREE.CubeGeometry(unit, wallheight, unit);
+
+		for (var i = 0; i < mapH; i++) {
+			for (var j = 0; j < map[i].length; j++) {
+				var num = map[i][j];
+
+				if (num == 1) { // zidovi
+
+					var wall = new THREE.Mesh(cube, new THREE.MeshBasicMaterial( { map: wallTexture } ));
+					wall.position.x = (i%units - units/2) * unit; // units/2 prestavi mapo za polovico na sredino
+					wall.position.y = floorCount > 1 ? wallheight * floorCount - wallheight/2 : wallheight/2 * floorCount ;
+					wall.position.z = (j%map[i].length - units/2) * unit;
+					wall.castShadow = true;
+					wall.receiveShadow = false;
+					objects.push(wall);
+					scene.add(wall);
+
+				}else if(num == 2){ //prehodno -> tla
+					var flr = new THREE.Mesh(cube, new THREE.MeshBasicMaterial( { map: floorTexture } ));
+					flr.position.x = (i%units - units/2) * unit; // units/2 prestavi mapo za polovico na sredino
+					flr.position.y = floorCount > 1 ? wallheight * floorCount - wallheight/2  : -wallheight/2 * floorCount;
+					flr.position.z = (j%map[i].length - units/2) * unit;
+					flr.castShadow = true;
+					flr.receiveShadow = true;
+					flr.name = "noPortal";
+					objects.push(flr);
+					scene.add(flr);
+
+				}else if(num == 3){
+					var wall = new THREE.Mesh(cube, new THREE.MeshBasicMaterial( { map: concrete } ));
+					wall.position.x = (i%units - units/2) * unit; // units/2 prestavi mapo za polovico na sredino
+					wall.position.y = floorCount > 1 ? wallheight * floorCount - wallheight/2 : wallheight/2 * floorCount ;
+					wall.position.z = (j%map[i].length - units/2) * unit;
+					wall.castShadow = true;
+					wall.receiveShadow = false;
+					wall.name="noPortal";
+					objects.push(wall);
+					scene.add(wall);
+				}else if( num == 4 ){
+					var wall = new THREE.Mesh(cube, new THREE.MeshBasicMaterial( { map: concrete } ));
+					wall.position.x = (i%units - units/2) * unit; // units/2 prestavi mapo za polovico na sredino
+					wall.position.y = floorCount > 1 ? wallheight * floorCount - wallheight/2 : wallheight/2 * floorCount ;
+					wall.position.z = (j%map[i].length - units/2) * unit;
+					wall.castShadow = true;
+					wall.receiveShadow = false;
+					wall.name="noPortal";
+					objects.push(wall);
+					scene.add(wall);
+					buttonPos = wall.position.clone();
+					buttonPos.y += 3.5;
+
+
+				}
+				else if (num == -1) floorCount++; //new floor (elevation)
+			}
+	}
+	
+
+	}
+
+
+
+
+var endGame = function(msg){
+				blocker.style.display = 'block';
+				navodila.style.display = 'block';
+				navodila.innerHTML = msg;
+				controls.enabled = false;
+				play = false;
+}
+var addModels = function(){
+
+
+
+		if(gunLoaded){
+			portalGunObj.position.copy(controls.getObject().position);
+			//portalGunObj.scale.set(0.01, 0.01, 0.01);
+
+				var ambient = new THREE.AmbientLight( 0xffffff );
+				scene.add( ambient );
+				
+			scene.add(portalGunObj);
+			controls.addToPitch(portalGunObj);
+			gunLoaded = false;
+		}
+		if(playerLoaded){
+			playerObj.scale.set(0.06,0.06,0.06);
+			playerObj.position.copy(controls.getObject().position);
+			
+			playerLoaded = false;
+
+			scene.add(playerObj);
+
+		}
+		if(buttonLoaded){
+			buttonObj.scale.set(0.1, 0.1, 0.1);
+			buttonObj.position.copy(buttonPos);
+			buttonLoaded = false;
+			buttonObj.name ="finish";
+			buttonCollision.position.copy(buttonPos);
+			scene.add(buttonCollision);
+			scene.add(buttonObj);
+		}
+
+}
+	function update(){
+
+		if(!play) return;
+		
+		//prilagajanje kamere portalov
+		
+		//raycastanje za kolizijo
+		var distance = 20;
+		//TLA
+		raycasterFloor.ray.origin.copy(controls.getObject().position);
+		raycasterFloor.ray.origin.y -= camHeight;
+		var intersections = nearestRayHit(raycasterFloor, false);
+		var floorCollision = intersections != null ? true : false;
+		if(floorCollision){
+				collidingWithPortal = intersections[0].object.name;
+				if((collidingWithPortal == "blue" || collidingWithPortal == "orange") && both)
+					{
+						floorCollision = false;
+						if(intersections[0].distance > 1)
+							teleport(collidingWithPortal);
+						}
+						
+			} 
+
+		var interFin = raycasterFloor.intersectObject(buttonCollision);
+		if(interFin.length > 0 )
+			{
+				
+				endGame("<h1>KONEC IGRE! CONGRATS:)</h1>");
+				
+			}
+		//GAME OVER CHECK
+		if(controls.getObject().position.y <= -10){
+			endGame("<h1>KONEC IGRE! TRY AGAIN..</h1>");
+		}
+		//STROP
+		raycasterCeil.ray.origin.copy(controls.getObject().position);
+		raycasterCeil.ray.origin.y += camHeight - 0.6;
+		intersections = nearestRayHit(raycasterCeil, false);
+		var ceilCollision = intersections != null ? true : false;
+
+			if(ceilCollision){
+				collidingWithPortal = intersections[0].object.name
+				if((collidingWithPortal == "blue" || collidingWithPortal == "orange") && both)
+					{
+						ceilCollision = false;
+						distance = intersections[0].distance;
+						if(distance < 0.8)
+							teleport(collidingWithPortal);
+					}
+			} 
+			
+
+		if(!floorCollision && !j && !fallOfEdge ) {
+			falling = true;
+			jSpeed = 0;
+			fallOfEdge = true;
+		}
+		addModels();
+		//se izvede samo enkrat ob zagonu igre, da dvignemo igralca malce višje od tal(zaradi kolizije)
+		if(start) {
+			controls.getObject().translateY(2);
+			start = false;
+			playStart();
+		}
+		//premikanje objekta playerja 
+		var deltaTime = clock.getDelta();
+		playerObj.position.copy(controls.getObject().position);
+		playerObj.rotation.copy(controls.getObject().rotation);
+
+		var lookDirectionVector = new THREE.Vector3(0,0,-1);		
+			lookDirectionVector.applyQuaternion( controls.getObject().quaternion );
+		//premikanje
+		if(l){
+				//LEVO
+
+			var leftVector = lookDirectionVector.clone().applyAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2);
+			var leftVec = leftVector.clone().normalize();
+			raycasterLeft.ray.origin.copy(controls.getObject().position);
+			raycasterLeft.ray.origin.y += camHeight/2;
+			raycasterLeft.ray.direction = leftVec;
+			intersections = nearestRayHit(raycasterLeft, false);
+			var leftCollision = intersections != null ? true : false;
+
+			if(leftCollision){
+				collidingWithPortal = intersections[0].object.name
+				if((collidingWithPortal == "blue" || collidingWithPortal == "orange") && both)
+					{	leftCollision = false;
+						distance = intersections[0].distance;
+					}
+			} 
+			if(!leftCollision){
+			var vector = new THREE.Vector3( 0, 0, -1 );
+			vector.applyAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2);
+			var z = vector.z, x = vector.x;
+			
+		        controls.getObject().translateZ((z * movespeed) * deltaTime);
+		        controls.getObject().translateX((x * movespeed) * deltaTime); 
+		        if(distance <= 0.8)
+		        	{
+		        		//time to teleport :)
+							teleport(collidingWithPortal);
+							distance = 20;			
+						
+		        	}
+		      }  
+		      
+		}
+		if(r){
+			//DESNO
+			var leftVector = lookDirectionVector.clone().applyAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2);
+			var leftVec = leftVector.clone().normalize();
+			var rightVector = leftVector.clone().negate().normalize();
+			raycasterRight.ray.origin.copy(controls.getObject().position);
+			raycasterRight.ray.origin.y += camHeight/2;
+			raycasterRight.ray.direction = rightVector;
+			intersections = nearestRayHit(raycasterRight, false);
+			var rightCollision = intersections != null ? true : false;
+			if(rightCollision){
+				collidingWithPortal = intersections[0].object.name
+				if((collidingWithPortal == "blue" || collidingWithPortal == "orange") && both)
+					{
+						rightCollision = false;
+						distance = intersections[0].distance;
+
+					}
+			} 
+
+			if(!rightCollision){
+			var vector = new THREE.Vector3( 0, 0, -1 );
+			vector.applyAxisAngle(new THREE.Vector3(0,1,0), -Math.PI/2);
+			var z = vector.z, x = vector.x;
+			
+		        controls.getObject().translateZ((z * movespeed) * deltaTime);
+		        controls.getObject().translateX((x * movespeed) * deltaTime);
+		        if(distance <= 0.8)
+		        	{
+		        		//time to teleport :)
+							teleport(collidingWithPortal);
+							distance = 20;			
+						
+		        	}
+		     }
+		     
+		}
+		if(f){
+			
+			//NAPREJ kolizija
+			var lookForwardVector = lookDirectionVector.clone().normalize();
+
+			raycasterForward.ray.origin.copy(controls.getObject().position);
+
+			fPortalCol.ray.origin.copy(controls.getObject().position);
+			fPortalCol.ray.origin.y += camHeight/2;
+			fPortalCol.ray.direction = lookForwardVector;
+			raycasterForward.ray.origin.y -= camHeight + 0.4;
+			raycasterForward.ray.direction = lookForwardVector;
+			intersections = nearestRayHit(raycasterForward, false);
+			var forwardCollision = intersections != null ? true : false;
+			var pInter = nearestRayHit(fPortalCol, false);
+			var portalCollision = pInter != null ? true : false;
+			if(portalCollision){
+				collidingWithPortal = pInter[0].object.name
+				if((collidingWithPortal == "blue" || collidingWithPortal == "orange") && both)
+					{
+						forwardCollision = false;
+						distance = pInter[0].distance;
+					}
+
+			} 
+			if(!forwardCollision){
+
+				var vector = new THREE.Vector3( 0, 0, -1 );
+				var z = vector.z, x = vector.x;
+				if(!l && !r){
+					controls.getObject().translateZ((z * (movespeed) * 1.3) * deltaTime);
+		        	controls.getObject().translateX((x * (movespeed) * 1.3) * deltaTime);
+				}else{
+					controls.getObject().translateZ((z * movespeed) * deltaTime);
+		        	controls.getObject().translateX((x * movespeed) * deltaTime);
+				}
+		        
+		        if(distance <= 0.8)
+		        	{
+		        		//time to teleport :)
+							teleport(collidingWithPortal);
+							distance = 20;			
+						
+		        	}
+		     }
+		      			       	
+		}
+		if(b){
+			//NAZAJ
+			var backDirectionVector = lookDirectionVector.clone().negate().normalize();
+			raycasterBackward.ray.origin.copy(controls.getObject().position);
+			raycasterBackward.ray.origin.y += camHeight/2;
+			raycasterBackward.ray.direction = backDirectionVector;
+			intersections = nearestRayHit(raycasterBackward, false);
+			var backwardCollision = intersections != null ? true : false;
+			if(backwardCollision){
+				collidingWithPortal = intersections[0].object.name
+				if((collidingWithPortal == "blue" || collidingWithPortal == "orange") && both)
+					{
+						backwardCollision = false;
+						distance = intersections[0].distance;
+				}			
+			} 
+			if(!backwardCollision){
+
+
+			var vector = new THREE.Vector3( 0, 0, -1 );
+			vector.negate();
+			var z = vector.z, x = vector.x;
+			
+		        controls.getObject().translateZ((z * movespeed) * deltaTime);
+		        controls.getObject().translateX((x * movespeed) * deltaTime);
+		        if(distance <= 0.8)
+		        	{
+		        		//time to teleport :)
+							teleport(collidingWithPortal);
+							distance = 20;			
+						
+		        	}
+		    }
+		 	
+		}
+		if(j){
+			PlaySound();
+			if(ceilCollision) {
+				falling = true;
+				j = false;
+				jSpeed = 0;
+				return;
+			}
+			canJump = false;
+			controls.getObject().translateY(jSpeed);
+			jSpeed -= 3.4  * deltaTime;
+			if(jSpeed <= 0)
+				{
+					j = false;
+					falling = true;
+				}
+		}else if(falling){
+			
+			if(floorCollision) //kasnejša zamenjava s kolizijo
+				{
+					canJump = true;
+					jSpeed = jCap; //if hits gournd, reset jSpeed = 20;
+					fallOfEdge = false;
+					return;
+				}
+			if(jSpeed > jCap)
+				jSpeed = jCap;
+			
+			jSpeed += 1.8 * deltaTime;
+			controls.getObject().translateY(-jSpeed);
+				        
+			
+		}
+		
+		
+
+	}
+
+var teleport = function(col){
+	var pt;
+	//rotacije
+	var normal1 = teleportNormals[0];
+	var normal2 = teleportNormals[1];
+	var n = normal1.clone().dot(normal2);
+	var entryRotation = controls.getObject().rotation;
+	var entryPortal, outPortal;
+	if(col == "blue"){
+		entryPortal = blueSphere;
+		outPortal = orangeSphere;
+	}else{
+		entryPortal = orangeSphere;
+		outPortal = blueSphere;
+	}
+	var reverse = false;
+	if(teleportNormals[0].x == 1 || teleportNormals[1].x == 1){
+		reverse = true;
+	}
+	//rotacija ob teleportaciji
+	if(n == 1){
+		controls.getObject().rotation.set(0, Math.PI/2 + (entryRotation.y + Math.PI/2) , 0);
+	}else if(n == 0){
+		controls.getObject().rotation.set(0, reverse ? (entryPortal.rotation.y < outPortal.rotation.y ? entryRotation.y - Math.PI/2 : entryRotation.y + Math.PI/2) :(entryPortal.rotation.y > outPortal.rotation.y ? entryRotation.y - Math.PI/2 : entryRotation.y + Math.PI/2)  , 0);
+	}
+	//teleportacija
+	if(col == "blue"){
+		playBlueTeleport();
+		pt = teleportPoints[1];
+		controls.getObject().position.set(pt.x, pt.y, pt.z);
+	}else{
+		playOrangeTeleport();
+		pt = teleportPoints[0];
+		controls.getObject().position.set(pt.x, pt.y, pt.z);
+	}
+	
+}
+	
+	function keysDown(e){
+		var key = e.keyCode ? e.keyCode : e.which;
+
+		if(key == 65)
+			{
+				//A tipka
+				l = true;
+			}
+		if(key == 87)
+			{
+				//W tipka
+				f = true;
+			}
+		if(key == 83)
+			{
+				//S tipka
+				b = true;
+
+			}
+		if(key == 68)
+			{
+				//D tipka
+				r = true;
+
+			}
+		//if(key == 69)
+			//pickup();
+		if(key == 32)
+		{
+			//Space tipka
+			if(canJump){
+				falling = false;
+				j = true;
+			}
+		}
+	}
+
+
+	function keysUp(e){
+		var key = e.keyCode ? e.keyCode : e.which;
+
+		if(key == 65)
+			{
+				//A tipka
+				l = false;
+			}
+		if(key == 87)
+			{
+				//W tipka
+				f = false;
+
+			}
+		if(key == 83)
+			{
+				//S tipka
+				b = false;
+			}
+		if(key == 68)
+			{
+				//D tipka
+				r = false;
+			}
+		if(key == 32)
+		{
+			//Space tipka
+			/*j = false;
+			falling = true;*/
+
+		}
+		
+	}
+
+	function nearestRayHit(raycaster, checkPortals){
+		var hitCount = 0;
+		var nearestHit = null;
+
+		for(var i = 0; i < objects.length; i++){
+			var hit = raycaster.intersectObject(objects[i]);
+			if(hit.length > 0 )
+			{ 	
+				hitCount++;
+				if(hitCount == 1){ //first hit is the nearest
+					if(!checkPortals)
+						nearestHit = hit;
+					else if (hit[0].object.name != "blue" && hit[0].object.name != "orange")
+						nearestHit = hit;
+				}else{	//check if is still nearest
+					if(hit[0].distance < nearestHit[0].distance)
+						if(!checkPortals)
+							nearestHit = hit;
+						else if(hit[0].object.name != "blue" && hit[0].object.name != "orange")
+							nearestHit = hit;				
+				}
+				
+				
+			}
+		}
+		return nearestHit;
+	}
+	function createPortal(){
+		if(!play) return;
+		
+
+		mouse.x = ( (wWidth/2) / renderer.domElement.clientWidth ) * 2 - 1;
+		mouse.y = - ( (wHeight/2) / renderer.domElement.clientHeight ) * 2 + 1;
+
+		raycaster.setFromCamera(mouse, camera);
+
+		var nearestHit = nearestRayHit(raycaster, true);
+		//postavitev portala
+		if(nearestHit != null && nearestHit[0].object.name != "noPortal"){
+			blue ? playBlue() : playOrange();
+			var normalVec = nearestHit[0].face.normal.clone();
+							
+							var sphere = blue ? blueSphere : orangeSphere;
+							
+							//privzeta rotacija sfere in portala
+							sphere.position.set(0, 100, 0);	
+							sphere.rotation.set(0, 0, 0);
+							sphere.matrix = new THREE.Matrix4();
+
+							var triggeredPortal = blue ? bluePortalObj : orangePortalObj;
+							triggeredPortal.position.set(0, 100, 0);
+							triggeredPortal.rotation.set(0, 0, 0);
+
+
+							//točki, kjer bo ozadje in dejanski portal
+							var originalHitPoint = nearestHit[0].point;
+							var point = originalHitPoint.clone();
+							var point2 = point.clone();
+							var teleportPoint = point.clone();
+						    if(normalVec.y === 1 || normalVec.y === -1)
+						    {
+						    	if(normalVec.y === -1){
+						    		//rotacijska matrika po določeni axi
+						    		var mat = new THREE.Matrix4().makeRotationAxis( new THREE.Vector3(1,0,0), Math.PI );
+						    		//rotacija sfere in rotacija portala z uporabo rotacijske matrike
+						    		sphere.matrix.multiply(mat);
+						    		sphere.rotation.setFromRotationMatrix(sphere.matrix);
+						    		triggeredPortal.rotation.setFromRotationMatrix(sphere.matrix);
+
+						    		//točki na kateri postavimo ozadje (point2) portala in dejanski portal (point)
+						    		point.y -= 0.1;
+						    		point2.y -= 0.05;
+						    		teleportPoint.y -= 2;
+						    	}else{
+						    		point.y += 0.1;
+						    		point2.y += 0.05;
+						    		teleportPoint.y += 2;
+						    	}
+						    	//včasih potrebno rotirati po večih oseh postopoma (recimo portal pristane na strop ali tla)
+						    	var mat = new THREE.Matrix4().makeRotationAxis( new THREE.Vector3(0,0,1), Math.PI/2 );
+						    	sphere.matrix.multiply(mat);
+						    	sphere.rotation.setFromRotationMatrix(sphere.matrix);
+						    	triggeredPortal.rotation.setFromRotationMatrix(sphere.matrix);
+
+						    }else if(normalVec.z === 1 || normalVec.z === -1){
+						    	
+						    	var mat = new THREE.Matrix4().makeRotationAxis( new THREE.Vector3(0,1,0), Math.PI/2 );
+						    	sphere.matrix.multiply(mat);
+						    	sphere.rotation.setFromRotationMatrix(sphere.matrix);
+						    	triggeredPortal.rotation.setFromRotationMatrix(sphere.matrix);
+
+						    	if(normalVec.z === 1){
+						    		var mat = new THREE.Matrix4().makeRotationAxis( new THREE.Vector3(0,1,0), Math.PI );
+						    		sphere.matrix.multiply(mat);
+						    		sphere.rotation.setFromRotationMatrix(sphere.matrix);
+						    		triggeredPortal.rotation.setFromRotationMatrix(sphere.matrix);
+
+						    		point.z += 0.1;
+						    		point2.z += 0.05;
+						    		teleportPoint.z += 2;
+						    	}else{
+						    		point.z -= 0.1;
+						    		point2.z -= 0.05;
+						    		teleportPoint.z -= 2;
+						    	}
+						    }else if(normalVec.x === -1){
+						    	var mat = new THREE.Matrix4().makeRotationAxis( new THREE.Vector3(0,1,0), Math.PI );
+						    		sphere.matrix.multiply(mat);
+						    		sphere.rotation.setFromRotationMatrix(sphere.matrix);
+						    		triggeredPortal.rotation.setFromRotationMatrix(sphere.matrix);
+
+						    		point.x -= 0.1;
+						    		point2.x -= 0.05;
+						    		teleportPoint.x -= 2;
+						    }else if(normalVec.x === 1){
+
+									point.x += 0.1;
+									point2.x += 0.05;
+									teleportPoint.x += 2;
+						    }
+							//skrčimo sfero v obliki ovalne ploskve -> ozadje portala				    
+								 					
+							sphere.position.copy( point2 ); //prestavimo sfero na pozicijo
+							triggeredPortal.position.copy( point ); //prestavimo portal na točko zadetka 
+
+							if(blue){  //v primeru modrega portala (levi klik)
+
+								//če portal že obstaja v seznamu, ga odstranimo, ker na sceni lahko obstaja le 1 portal iste barve naenkrat!
+								if(portals[0] != null)
+									scene.remove(portals[0]);
+								else
+									{
+										objects.push(sphere);
+									}
+								//če obstaja že ozadje, ga pravtako odstranimo
+								if(pLights[0] != null) 
+									scene.remove(pLights[0]);
+								sphere.name = "blue";
+								//nastavimo nove vrednosti za naprej
+								portals[0] = triggeredPortal;
+								pLights[0] = sphere;
+								teleportPoints[0] = teleportPoint;
+								//prestavimo kamero na točko pravega portala
+								blueCamera.position.copy(originalHitPoint);
+
+								
+								//blueCamera.position.y += (controls.getObject().position.y - point.y);
+								pointBlue = point.clone();
+								blueCamera.lookAt(point);
+								teleportNormals[0] = normalVec;
+								originBlue = originalHitPoint.clone();
+								
+							}else{ //v primeru oranžnega portala (desni klik)
+
+								if(portals[1] != null)
+									scene.remove(portals[1]);
+								else
+									{
+										objects.push(sphere);
+										
+									}
+								if(pLights[1] != null)
+									scene.remove(pLights[1]);
+
+								portals[1] = triggeredPortal;
+								pLights[1] = sphere;
+								teleportPoints[1] = teleportPoint;
+								//prestavimo kamero oranžnega portala
+								orangeCamera.position.copy(originalHitPoint);
+								originOrange = originalHitPoint.clone();
+								//orangeCamera.position.y += (controls.getObject().position.y - point.y);
+								pointOrange = point.clone();
+								orangeCamera.lookAt(point);
+								teleportNormals[1] = normalVec;
+
+							}
+							//dodamo ozadje
+							scene.add( sphere );	
+							//če v začetku igre še nista bila postavljena oba portala, potem ni kamere a.k.a je material pravega portala le barva njegovega ozadja.
+							if(portals[0] != null && portals[1] != null)
+								both = true;
+							//nastavimo material portaloma (ali barva ali pa dejanski kameri v texturo)
+							projectPortal(bluePortalObj, both ? orangeCameraMaterial : new THREE.MeshBasicMaterial({color: 0x2294E0}) );
+							projectPortal(orangePortalObj, both ? blueCameraMaterial : new THREE.MeshBasicMaterial( {color: 0xFFAA4F} ));
+							//dodamo portal v sceno.
+							scene.add(triggeredPortal);
+				
+						}else{
+							playInvalid();
+						}
+
+	}
+	function onWindowResize() {
+
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+
+		renderer.setSize( window.innerWidth, window.innerHeight );
+
+		
+
+	}
+	//poslušalci tipk in resize
+
+	window.addEventListener("keydown", keysDown, false);
+	window.addEventListener("keyup", keysUp, false);
+	window.addEventListener("click", mouseClick, false);
+	window.addEventListener("resize", onWindowResize, false );
+
+	function mouseRClick(){
+		blue = false;
+		orange = true;
+
+		createPortal();
+	}
+	function mouseClick(e){
+		e.preventDefault();
+		if(!play) return;
+
+		var mbutton = e.button;
+
+		if(mbutton == 2){
+			mouseRClick();
+			return;
+		}
+
+		blue = true;
+		orange = false;
+		createPortal();
+	}
+
+</script>
+<script src="build/plr.js"></script>
+</body>
+</html>
