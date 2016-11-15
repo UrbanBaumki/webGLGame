@@ -10,7 +10,7 @@ This is how the game looks
 ![screenshot 4](https://cloud.githubusercontent.com/assets/17611529/20304580/564ccda2-ab31-11e6-8d4e-42108fe8b65d.png)
 
 Note that the 3D models are a free resource.
-I implemented most of the FPS aspects, such as movement and collision. Teleporting works both ways and on all white surfaces (except the floor). Cameras from each portal are being cut and projected on the oposite portal's surface texture uvs, that had to be manually repositioned using blender.
+I implemented most of the FPS aspects, such as movement and collision. Teleporting works both ways and on all white surfaces (except the floor). Cameras from each portal are being cut and projected on the opposite portal's surface texture uvs, that had to be manually repositioned using blender.
 ![slika1](https://cloud.githubusercontent.com/assets/17611529/20304762/52a1795e-ab32-11e6-9087-8f92feb513c1.png)
 
 Maps are serialized with an array in javascript and can be easily manipulated or made. An example of a map:
