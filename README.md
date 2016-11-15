@@ -45,3 +45,7 @@ var map = [
 ```
 It works sort of like a tileset, but in 3D.
 
+#How to launch it?
+Simply download the repository, and host it on your machine using xampp for example :) and connect to localhost/index.html.
+
+I recommend using Chrome browser, since it seems it works smoother on it rather than mozilla.
